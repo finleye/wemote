@@ -44,13 +44,15 @@ module Wemote
 
       def discover
         ip = UDPSocket.open {|s| s.connect(GOOGLE_IP, 1); s.addr.last}
-        `nmap -sP #{ip.split('.')[0..-2].join('.')}.* > /dev/null && arp -na | grep b4:75`.split("\n").map do |device|
-          self.new(/\((\d+\.\d+\.\d+\.\d+)\)/.match(device)[1])
-        end.reject{|device| device.instance_variable_get(:@port).nil? }
+        ips = `nmap -sP #{ip.split('.')[0..-2].join('.')}1/24 > /dev/null && arp -na`
+          .split("\n")
+          .reject { |host| host =~ /<incomplete>/ }
+          .map { |device| /\((\d+\.\d+\.\d+\.\d+)\)/.match(device)[1] }
+        ips.map { |ip| self.new(ip) }.reject{|device| device.port.nil? }
       end
     end
 
-    attr_accessor :name
+    attr_accessor :name, :port
 
     def initialize(host,port=nil)
       @host, @port = host, port
